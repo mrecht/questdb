@@ -85,7 +85,7 @@ public class TableReader implements Closeable {
     private long tempMem8b = Unsafe.malloc(8);
 
     public TableReader(CairoConfiguration configuration, CharSequence tableName) {
-        LOG.info().$("open '").utf8(tableName).$('\'').$();
+        LOG.debug().$("open '").utf8(tableName).$('\'').$();
         this.configuration = configuration;
         this.ff = configuration.getFilesFacade();
         this.tableName = Chars.toString(tableName);
@@ -193,7 +193,7 @@ public class TableReader implements Closeable {
             Misc.free(txMem);
             freeColumns();
             freeTempMem();
-            LOG.info().$("closed '").utf8(tableName).$('\'').$();
+            LOG.debug().$("closed '").utf8(tableName).$('\'').$();
         }
     }
 
@@ -375,7 +375,7 @@ public class TableReader implements Closeable {
     public void reshuffleSymbolMapReaders(long pTransitionIndex) {
         final int columnCount = Unsafe.getUnsafe().getInt(pTransitionIndex + 4);
         final long index = pTransitionIndex + 8;
-        final long stateAddress = index + columnCount * 8;
+        final long stateAddress = index + columnCount * 8L;
 
         if (columnCount > this.columnCount) {
             symbolMapReaders.setPos(columnCount);
@@ -393,7 +393,7 @@ public class TableReader implements Closeable {
 
             Unsafe.getUnsafe().putByte(stateAddress + i, (byte) -1);
 
-            int copyFrom = Unsafe.getUnsafe().getInt(index + i * 8);
+            int copyFrom = Unsafe.getUnsafe().getInt(index + i * 8L);
 
             // don't copy entries to themselves, unless symbol map was deleted
             if (copyFrom == i + 1 && copyFrom < columnCount) {
@@ -411,7 +411,7 @@ public class TableReader implements Closeable {
             if (copyFrom > 0) {
                 tmp = copyOrRenewSymbolMapReader(symbolMapReaders.getAndSetQuick(copyFrom - 1, null), i);
 
-                int copyTo = Unsafe.getUnsafe().getInt(index + i * 8 + 4);
+                int copyTo = Unsafe.getUnsafe().getInt(index + i * 8L + 4);
 
                 // now we copied entry, what do we do with value that was already there?
                 // do we copy it somewhere else?
@@ -424,7 +424,7 @@ public class TableReader implements Closeable {
                     Unsafe.getUnsafe().putByte(stateAddress + copyTo - 1, (byte) -1);
 
                     tmp = copyOrRenewSymbolMapReader(tmp, copyTo - 1);
-                    copyTo = Unsafe.getUnsafe().getInt(index + (copyTo - 1) * 8 + 4);
+                    copyTo = Unsafe.getUnsafe().getInt(index + (copyTo - 1) * 8L + 4);
                 }
                 Misc.free(tmp);
             } else {
@@ -690,7 +690,7 @@ public class TableReader implements Closeable {
                 final long partitionRowCount = partitionRowCounts.getQuick(partitionIndex);
                 final boolean lastPartition = partitionIndex == partitionCount - 1;
                 for (int i = 0; i < columnCount; i++) {
-                    final int copyFrom = Unsafe.getUnsafe().getInt(pIndexBase + i * 8) - 1;
+                    final int copyFrom = Unsafe.getUnsafe().getInt(pIndexBase + i * 8L) - 1;
                     if (copyFrom > -1) {
                         fetchColumnsFrom(this.columns, this.columnTops, this.bitmapIndexes, oldBase, copyFrom);
                         copyColumnsTo(columns, columnTops, indexReaders, base, i, partitionRowCount, lastPartition);
@@ -1320,7 +1320,7 @@ public class TableReader implements Closeable {
                 for (int i = 0; i < columnCount; i++) {
 
                     if (isEntryToBeProcessed(pState, i)) {
-                        final int copyFrom = Unsafe.getUnsafe().getInt(pIndexBase + i * 8) - 1;
+                        final int copyFrom = Unsafe.getUnsafe().getInt(pIndexBase + i * 8L) - 1;
 
                         if (copyFrom == i) {
                             // It appears that column hasn't changed its position. There are three possibilities here:
@@ -1340,10 +1340,10 @@ public class TableReader implements Closeable {
                         if (copyFrom > -1) {
                             fetchColumnsFrom(this.columns, this.columnTops, this.bitmapIndexes, base, copyFrom);
                             copyColumnsTo(this.columns, this.columnTops, this.bitmapIndexes, base, i, partitionRowCount, lastPartition);
-                            int copyTo = Unsafe.getUnsafe().getInt(pIndexBase + i * 8 + 4) - 1;
+                            int copyTo = Unsafe.getUnsafe().getInt(pIndexBase + i * 8L + 4) - 1;
                             while (copyTo > -1 && isEntryToBeProcessed(pState, copyTo)) {
                                 copyColumnsTo(this.columns, this.columnTops, this.bitmapIndexes, base, copyTo, partitionRowCount, lastPartition);
-                                copyTo = Unsafe.getUnsafe().getInt(pIndexBase + (copyTo - 1) * 8 + 4);
+                                copyTo = Unsafe.getUnsafe().getInt(pIndexBase + (copyTo - 1) * 8L + 4);
                             }
                             Misc.free(tempCopyStruct.mem1);
                             Misc.free(tempCopyStruct.mem2);
